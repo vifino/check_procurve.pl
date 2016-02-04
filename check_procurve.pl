@@ -191,7 +191,7 @@ if ( $Power && $Power != 2 ) {
 		}
 	}
 }
-if ( $Power == 2 || $Power == 3 ) {
+if ( $Power == 2 or $Power == 3 ) {
 	if ( $Power == 2 ) {
 		my ($SNMPresultPower, $SNMPerrorPower) = $session -> get_request( -varbindlist => [$PowerOID] );
 		if ( !defined($SNMPresultPower) ) {
