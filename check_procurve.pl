@@ -45,21 +45,25 @@ my $Fanstate;
 my $Powerstate;
 my $Powerstate2;
 
-my %ERRORS = (	'OK'		=>	'0',
-				'WARNING'	=>	'1',
-				'CRITICAL'	=>	'2',
-				'UNKNOWN'	=>	'3'
-				);
+my %ERRORS = (
+	'OK'       => '0',
+	'WARNING'  =>	'1',
+	'CRITICAL' =>	'2',
+	'UNKNOWN'  => '3'
+);
 
-my $result = GetOptions (	"v" => \$verbose,
-							"C=s" => \$community,
-							"help"  => \$help,
-							"H=s" => \$hostname,
-							"t=i" => \$timeout,
-							"V" => \$ver,
-							"F" => \$Fan,
-							"P=i" => \$Power
-							);
+my %CODETOERR = reverse %ERRORS;
+
+my $result = GetOptions (
+	"v"    => \$verbose,
+	"C=s"  => \$community,
+	"help" => \$help,
+	"H=s"  => \$hostname,
+	"t=i"  => \$timeout,
+	"V"    => \$ver,
+	"F"    => \$Fan,
+	"P=i"  => \$Power
+);
 
 my $FanOID = ".1.3.6.1.4.1.11.2.14.11.1.2.6.1.4.1"; # HP ProCurve Fan sensor
 my $PowerOID = ".1.3.6.1.4.1.11.2.14.11.1.2.6.1.4.2"; # HP ProCurve PowerSupply sensor
@@ -96,14 +100,15 @@ if ( ( ! $hostname ) || ( ( ! $Fan ) && ( ! $Power ) ) ) {
 	exit($ERRORS{'WARNING'});
 }
 
-my ($session, $error) = Net::SNMP -> session(	-hostname	=>	$hostname,
-												-version	=>	'snmpv2c',
-												-community	=>	$community,
-												-timeout	=>	$timeout,
-											);
+my ($session, $error) = Net::SNMP -> session(
+	-hostname	 => $hostname,
+	-version	 => 'snmpv2c',
+	-community =>	$community,
+	-timeout	 =>	$timeout,
+);
 
 if ( !defined($session) ) {
-	printf( "ERROR: %s.\n", $error ) if $verbose;
+	printf("ERROR: %s.\n", $error) if $verbose;
 	print "SNMP session error.";
 	exit($ERRORS{'UNKNOWN'});
 }
@@ -113,7 +118,7 @@ if ( $Fan ) {
 	if ( !defined($SNMPresultFan) ) {
 		printf( "ERROR: %s.\n", $SNMPerrorFan ) if $verbose;
 		$session -> close;
-		print "SNMP result error.  Maybe not a HP ProCurve switch?";
+		print "SNMP result error. Maybe not a HP ProCurve switch?";
 		exit($ERRORS{'UNKNOWN'});
 	}
 	$Fanstate = $SNMPresultFan -> {$FanOID};
@@ -124,15 +129,15 @@ if ( $Fan ) {
 	}
 	if ( $Fanstate == 4 ) {
 		$retval = $ERRORS{'OK'};
-		$retmessage .= "Fans OK. ";
+		$retmessage .= "Fans are normal. ";
 	}
 	elsif ( $Fanstate == 3 ){
 		$retval = $ERRORS{'WARNING'};
-		$retmessage .= "Fans are in WARNING state. ";
+		$retmessage .= "Fans are in a degrading state. ";
 	}
 	elsif ( $Fanstate == 2 ) {
 		$retval = $ERRORS{'CRITICAL'};
-		$retmessage .= "Fans are CRITICAL. ";
+		$retmessage .= "Fans are failing. ";
 	}
 	elsif ( $Fanstate == 5 ) {
 		$retval = $ERRORS{'WARNING'};
@@ -140,7 +145,7 @@ if ( $Fan ) {
 	}
 	else {
 		$retval = $ERRORS{'UNKNOWN'};
-		$retmessage .= "Fan state UNKNOWN. ";
+		$retmessage .= "Fan state not known. ";
 	}
 }
 if ( $Power && $Power != 2 ) {
@@ -148,7 +153,7 @@ if ( $Power && $Power != 2 ) {
 	if ( !defined($SNMPresultPower) ) {
 		printf( "ERROR: %s.\n", $SNMPerrorPower ) if $verbose;
 		$session -> close;
-		print "SNMP result error.  Maybe not a HP ProCurve switch?";
+		print "SNMP result error. Maybe not a HP ProCurve switch?";
 		exit($ERRORS{'UNKNOWN'});
 	}
 	$Powerstate = $SNMPresultPower -> {$PowerOID};
@@ -158,19 +163,19 @@ if ( $Power && $Power != 2 ) {
 		exit($ERRORS{'WARNING'});
 	}
 	if ( $Powerstate == 4 ) {
-		$retmessage .= "Primary Power Supply OK. ";
+		$retmessage .= "Primary Power Supply working normally. ";
 		if ( !( $retval == $ERRORS{'WARNING'} || $retval == $ERRORS{'CRITICAL'} || ( $retval == $ERRORS{'UNKNOWN'} && $Fan ) ) ) {
 			$retval = $ERRORS{'OK'};
 		}
 	}
 	elsif ( $Powerstate == 3 ) {
-		$retmessage .= "Primary Power Supply is in WARNING state. ";
+		$retmessage .= "Primary Power Supply is in a degrading state. ";
 		if ( ! ( $retval == $ERRORS{'CRITICAL'} ) ) {
 			$retval = $ERRORS{'WARNING'};
 		}
 	}
 	elsif ( $Powerstate == 2 ) {
-		$retmessage .= "Primary Power Supply is CRITICAL. ";
+		$retmessage .= "Primary Power Supply is failing. ";
 		$retval = $ERRORS{'CRITICAL'};
 	}
 	elsif ( $Powerstate == 5 ) {
@@ -180,7 +185,7 @@ if ( $Power && $Power != 2 ) {
 		}
 	}
 	else {
-		$retmessage .= "Primary Power Supply state UNKNOWN. ";
+		$retmessage .= "Primary Power Supply state not known. ";
 		if ( $retval == $ERRORS{'OK'} ) {
 			$retval = $ERRORS{'UNKNOWN'};
 		}
@@ -192,7 +197,7 @@ if ( $Power == 2 || $Power == 3 ) {
 		if ( !defined($SNMPresultPower) ) {
 			printf( "ERROR: %s.\n", $SNMPerrorPower ) if $verbose;
 			$session -> close;
-			print "SNMP result error.  Maybe not a HP ProCurve switch?";
+			print "UNKNOWN - SNMP result error. Maybe not a HP ProCurve switch?";
 			exit($ERRORS{'UNKNOWN'});
 		}
 		$Powerstate = $SNMPresultPower -> {$PowerOID};
@@ -211,7 +216,7 @@ if ( $Power == 2 || $Power == 3 ) {
 		exit($ERRORS{'WARNING'});
 	}
 	if ( $Powerstate2 == 4 ) {
-		$retmessage .= "Secondary Power Supply OK. ";
+		$retmessage .= "Secondary Power Supply working normally. ";
 		if ( !( $retval == $ERRORS{'WARNING'} || $retval == $ERRORS{'CRITICAL'} || ( $retval == $ERRORS{'UNKNOWN'} && ( $Fan || $Powerstate == 1 ) ) ) ) {
 			$retval = $ERRORS{'OK'};
 		}
@@ -233,7 +238,7 @@ if ( $Power == 2 || $Power == 3 ) {
 		}
 	}
 	else {
-		$retmessage .= "Secondary Power Supply state UNKNOWN. ";
+		$retmessage .= "Secondary Power Supply state not known. ";
 		if ( $retval == $ERRORS{'OK'} ) {
 			$retval = $ERRORS{'UNKNOWN'};
 		}
@@ -242,5 +247,5 @@ if ( $Power == 2 || $Power == 3 ) {
 
 $session->close;
 
-print $retmessage;
+print $CODETOERR{$retval} . " - " . $retmessage . "\n";
 exit($retval);
