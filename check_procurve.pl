@@ -11,7 +11,7 @@
 # VERSIONS
 # 0.2
 #	Modified by vifino.
-#	- -P 2 shows only second fan, use -P 3 to show both.
+#	- -P 2 shows only second psu, use -P 3 to show both.
 #	- Switched Fan OID's, they were flipped for my switch, at least. (HP ProCurve 3400cl) 
 #	- 
 # 0.1
