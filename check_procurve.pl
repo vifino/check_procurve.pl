@@ -25,9 +25,12 @@
 #
 
 use strict;
+use v5.20;
 use Getopt::Long;
 Getopt::Long::Configure ('no_ignore_case');
 use Net::SNMP;
+
+no warnings qw(experimental::smartmatch);
 
 my $version = "0.1.1";
 
@@ -123,29 +126,31 @@ if ( $Fan ) {
 	}
 	$Fanstate = $SNMPresultFan -> {$FanOID};
 	print "Status: " . $Fanstate . "\n" if $verbose;
-	if ( $Fanstate !~ /[12345]/ ) {
-		print "Invalid SNMP Response: $Fanstate. Maybe not a HP ProCurve switch or fan sensor not installed?";
-		exit($ERRORS{'WARNING'});
-	}
-	if ( $Fanstate == 4 ) {
-		$retval = $ERRORS{'OK'};
-		$retmessage .= "Fans are normal. ";
-	}
-	elsif ( $Fanstate == 3 ){
-		$retval = $ERRORS{'WARNING'};
-		$retmessage .= "Fans are in a degrading state. ";
-	}
-	elsif ( $Fanstate == 2 ) {
-		$retval = $ERRORS{'CRITICAL'};
-		$retmessage .= "Fans are failing. ";
-	}
-	elsif ( $Fanstate == 5 ) {
-		$retval = $ERRORS{'WARNING'};
-		$retmessage .= "No fan present. ";
-	}
-	else {
-		$retval = $ERRORS{'UNKNOWN'};
-		$retmessage .= "Fan state not known. ";
+	for($Fanstate) {	
+		when (4) {
+			$retval = $ERRORS{'OK'};
+			$retmessage .= "Fans are normal. ";
+		}
+		when (3) {
+			$retval = $ERRORS{'WARNING'};
+			$retmessage .= "Fans are in a degrading state. ";
+		}
+		when (2) {
+			$retval = $ERRORS{'CRITICAL'};
+			$retmessage .= "Fans are failing. ";
+		}
+		when (5) {
+			$retval = $ERRORS{'WARNING'};
+			$retmessage .= "No fan present. ";
+		}
+		when (1) {
+			$retval = $ERRORS{'UNKNOWN'};
+			$retmessage .= "Fan state not known. ";
+		}
+		default {
+			print "Invalid SNMP Response: $Fanstate. Maybe not a HP ProCurve switch or fan sensor not installed?";
+			exit($ERRORS{'WARNING'});
+		}
 	}
 }
 if ( $Power && $Power != 2 ) {
@@ -158,36 +163,38 @@ if ( $Power && $Power != 2 ) {
 	}
 	$Powerstate = $SNMPresultPower -> {$PowerOID};
 	print "Status: " . $Powerstate . "\n" if $verbose;
-	if ( $Powerstate !~ /[12345]/ ) {
-		print "Invalid SNMP Response: $Powerstate. Maybe not a HP ProCurve switch or power supply sensor not installed?";
-		exit($ERRORS{'WARNING'});
-	}
-	if ( $Powerstate == 4 ) {
-		$retmessage .= "Primary Power Supply working normally. ";
-		if ( !( $retval == $ERRORS{'WARNING'} || $retval == $ERRORS{'CRITICAL'} || ( $retval == $ERRORS{'UNKNOWN'} && $Fan ) ) ) {
-			$retval = $ERRORS{'OK'};
+	for ($Powerstate) {
+		when (4) {
+			$retmessage .= "Primary Power Supply working normally. ";
+			if ( !( $retval == $ERRORS{'WARNING'} || $retval == $ERRORS{'CRITICAL'} || ( $retval == $ERRORS{'UNKNOWN'} && $Fan ) ) ) {
+				$retval = $ERRORS{'OK'};
+			}
 		}
-	}
-	elsif ( $Powerstate == 3 ) {
-		$retmessage .= "Primary Power Supply is in a degrading state. ";
-		if ( ! ( $retval == $ERRORS{'CRITICAL'} ) ) {
-			$retval = $ERRORS{'WARNING'};
+		when (3) {
+			$retmessage .= "Primary Power Supply is in a degrading state. ";
+			if ( ! ( $retval == $ERRORS{'CRITICAL'} ) ) {
+				$retval = $ERRORS{'WARNING'};
+			}
 		}
-	}
-	elsif ( $Powerstate == 2 ) {
-		$retmessage .= "Primary Power Supply is failing. ";
-		$retval = $ERRORS{'CRITICAL'};
-	}
-	elsif ( $Powerstate == 5 ) {
-		$retmessage .= "Primary Power Supply not present. ";
-		if ( ! ( $retval == $ERRORS{'CRITICAL'} ) ) {
-			$retval = $ERRORS{'WARNING'};
+		when (2) {
+			$retmessage .= "Primary Power Supply is failing. ";
+			$retval = $ERRORS{'CRITICAL'};
 		}
-	}
-	else {
-		$retmessage .= "Primary Power Supply state not known. ";
-		if ( $retval == $ERRORS{'OK'} ) {
-			$retval = $ERRORS{'UNKNOWN'};
+		when (5) {
+			$retmessage .= "Primary Power Supply not present. ";
+			if ( ! ( $retval == $ERRORS{'CRITICAL'} ) ) {
+				$retval = $ERRORS{'WARNING'};
+			}
+		}
+		when (1) {
+			$retmessage .= "Primary Power Supply state not known. ";
+			if ( $retval == $ERRORS{'OK'} ) {
+				$retval = $ERRORS{'UNKNOWN'};
+			}
+		}
+		default {
+			print "Invalid SNMP Response: $Powerstate. Maybe not a HP ProCurve switch or power supply sensor not installed?";
+			exit($ERRORS{'WARNING'});
 		}
 	}
 }
@@ -211,36 +218,39 @@ if ( $Power == 2 or $Power == 3 ) {
 	}
 	$Powerstate2 = $SNMPresultPower2 -> {$PowerOID2};
 	print "Status: " . $Powerstate2 . "\n" if $verbose;
-	if ( $Powerstate2 !~ /[12345]/ ) {
-		print "Invalid SNMP Response: $Powerstate2. Maybe not a HP ProCurve switch or second power supply sensor not installed?";
-		exit($ERRORS{'WARNING'});
-	}
-	if ( $Powerstate2 == 4 ) {
-		$retmessage .= "Secondary Power Supply working normally. ";
-		if ( !( $retval == $ERRORS{'WARNING'} || $retval == $ERRORS{'CRITICAL'} || ( $retval == $ERRORS{'UNKNOWN'} && ( $Fan || $Powerstate == 1 ) ) ) ) {
-			$retval = $ERRORS{'OK'};
+
+	for ($Powerstate2) {
+		when (4) {
+			$retmessage .= "Secondary Power Supply working normally. ";
+			if ( !( $retval == $ERRORS{'WARNING'} || $retval == $ERRORS{'CRITICAL'} || ( $retval == $ERRORS{'UNKNOWN'} && ( $Fan || $Powerstate == 1 ) ) ) ) {
+				$retval = $ERRORS{'OK'};
+			}
 		}
-	}
-	elsif ( $Powerstate2 == 3 ) {
-		$retmessage .= "Secondary Power Supply is in WARNING state. ";
-		if ( ! ( $retval == $ERRORS{'CRITICAL'} ) ) {
-			$retval = $ERRORS{'WARNING'};
+		when (3) {
+			$retmessage .= "Secondary Power Supply is in WARNING state. ";
+			if ( ! ( $retval == $ERRORS{'CRITICAL'} ) ) {
+				$retval = $ERRORS{'WARNING'};
+			}
 		}
-	}
-	elsif ( $Powerstate2 == 2 ) {
-		$retmessage .= "Secondary Power Supply is CRITICAL. ";
-		$retval = $ERRORS{'CRITICAL'};
-	}
-	elsif ( $Powerstate2 == 5 ) {
-		$retmessage .= "Secondary Power Supply not present. ";
-		if ( ! ( $retval == $ERRORS{'CRITICAL'} ) ) {
-			$retval = $ERRORS{'WARNING'};
+		when (2) {
+			$retmessage .= "Secondary Power Supply is CRITICAL. ";
+			$retval = $ERRORS{'CRITICAL'};
 		}
-	}
-	else {
-		$retmessage .= "Secondary Power Supply state not known. ";
-		if ( $retval == $ERRORS{'OK'} ) {
-			$retval = $ERRORS{'UNKNOWN'};
+		when (5) {
+			$retmessage .= "Secondary Power Supply not present. ";
+			if ( ! ( $retval == $ERRORS{'CRITICAL'} ) ) {
+				$retval = $ERRORS{'WARNING'};
+			}
+		}
+		when (1) {
+			$retmessage .= "Secondary Power Supply state not known. ";
+			if ( $retval == $ERRORS{'OK'} ) {
+				$retval = $ERRORS{'UNKNOWN'};
+			}
+		}
+		default {
+			print "Invalid SNMP Response: $Powerstate2. Maybe not a HP ProCurve switch or second power supply sensor not installed?";
+			exit($ERRORS{'WARNING'});
 		}
 	}
 }
